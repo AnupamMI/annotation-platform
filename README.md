@@ -2,7 +2,6 @@
 
 A general-purpose image annotation platform where **people make every labeling decision** and AI handles the data management around it: tracking, importing, querying and building datasets.
 
-> Status: private, in development. Working end to end: sign-in with roles, projects, uploads (large images are tiled), versioned annotations, review, assignments, activity, import and export in four formats, guideline search, Ask and two agents.
 
 ## What makes it different
 
