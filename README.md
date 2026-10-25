@@ -1,4 +1,4 @@
-# Annotation Platform (working name)
+# Annotation Platform 
 
 A general-purpose image annotation platform where **people make every labeling decision** and AI handles the data management around it: tracking, importing, querying and building datasets.
 
