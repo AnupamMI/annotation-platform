@@ -1,0 +1,106 @@
+/*
+  Design tokens.
+  Palette is taken from the Papanicolaou stain: Light Green SF (primary),
+  hematoxylin (nuclei / info), eosin (cytoplasm / pink), Orange G (attention).
+  Dark theme = dark-field stage. Light theme = glass slide under brightfield.
+*/
+
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --stage: #14181e;         /* app background, behind the viewer */
+  --panel: #1a1f27;         /* panels, rails */
+  --panel-raised: #212833;  /* inputs, hover, selected rows */
+  --line: #2b3340;          /* borders, dividers */
+  --line-strong: #3a4454;
+
+  --ink: #dde3ea;           /* primary text */
+  --ink-dim: #9aa5b3;       /* secondary text */
+  --ink-faint: #6b7686;     /* hints, disabled */
+
+  --green: #3fb59a;         /* Light Green SF: primary action, done, ok */
+  --green-ink: #0e2e27;     /* text on green */
+  --green-soft: rgba(63, 181, 154, 0.14);
+  --hema: #7b80e0;          /* hematoxylin: nuclei, info, focus */
+  --hema-soft: rgba(123, 128, 224, 0.16);
+  --eosin: #e47fa2;         /* eosin: cytoplasm, highlights */
+  --eosin-soft: rgba(228, 127, 162, 0.16);
+  --orange: #e9a13b;        /* Orange G: needs attention, unsaved, review */
+  --orange-soft: rgba(233, 161, 59, 0.16);
+  --red: #ec6a62;           /* errors, reject, destructive */
+  --red-soft: rgba(236, 106, 98, 0.15);
+
+  --viewer-bg: #0f1216;
+  --focus: var(--hema);
+
+  /* chart fills: deeper steps validated against the dark panel (lightness band, CVD, contrast) */
+  --chart-progress: #6a6fd2;
+  --chart-annotated: #cc6a8e;
+  --chart-review: #b97d22;
+  --chart-done: #2f9c83;
+  --chart-rejected: #d4544d;
+  --chart-new: #3a4454;
+  --overlay: rgba(8, 10, 13, 0.6);
+  --menu-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --stage: #e9edf0;
+  --panel: #f8fafb;
+  --panel-raised: #eef2f5;
+  --line: #d4dbe1;
+  --line-strong: #bcc5ce;
+
+  --ink: #1b222b;
+  --ink-dim: #4f5b69;
+  --ink-faint: #7f8a97;
+
+  --green: #1d8b72;
+  --green-ink: #ffffff;
+  --green-soft: rgba(29, 139, 114, 0.12);
+  --hema: #4f55c4;
+  --hema-soft: rgba(79, 85, 196, 0.12);
+  --eosin: #c4507a;
+  --eosin-soft: rgba(196, 80, 122, 0.12);
+  --orange: #b8740f;
+  --orange-soft: rgba(184, 116, 15, 0.13);
+  --red: #c8443d;
+  --red-soft: rgba(200, 68, 61, 0.1);
+
+  --viewer-bg: #d9dee3;
+
+  --chart-progress: #4f55c4;
+  --chart-annotated: #c4507a;
+  --chart-review: #b8740f;
+  --chart-done: #1d8b72;
+  --chart-rejected: #c8443d;
+  --chart-new: #c9d1d9;
+  --overlay: rgba(30, 36, 44, 0.35);
+  --menu-shadow: 0 8px 28px rgba(20, 30, 40, 0.18);
+}
+
+:root {
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-readout: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  /* type scale (1.2 ratio from 13px, dense tool UI) */
+  --t-xs: 11px;
+  --t-sm: 12px;
+  --t-base: 13px;
+  --t-md: 15px;
+  --t-lg: 18px;
+  --t-xl: 22px;
+  --t-2xl: 27px;
+
+  --r-ctl: 4px;   /* buttons, inputs */
+  --r-panel: 6px; /* panels, dialogs */
+
+  --rail-w: 64px;
+  --topbar-h: 48px;
+  --statusbar-h: 30px;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}

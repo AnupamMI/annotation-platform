@@ -1,0 +1,45 @@
+name: annotation-platform
+
+services:
+  db:
+    build: ./infra/postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-annot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-annot_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-annot}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-annot} -d ${POSTGRES_DB:-annot}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-annot}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-annot_dev_password}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
+    volumes:
+      - minio_data:/data
+
+volumes:
+  db_data:
+  minio_data:
