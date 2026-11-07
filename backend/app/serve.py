@@ -37,7 +37,7 @@ if (ROOT / "assets").is_dir():
     app.mount("/assets", HashedAssets(directory=ROOT / "assets"), name="assets")
 
 
-@app.get("/{path:path}", include_in_schema=False)
+@app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)  # HEAD: hosts' and uptime monitors' probes
 async def frontend(path: str):
     """Files from the build (favicon, samples, og.png); every other path is a page of the single-page app."""
     if not INDEX.exists():
