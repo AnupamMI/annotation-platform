@@ -15,8 +15,8 @@ venv/
 node_modules/
 dist/
 
-# Data never goes in the repo
-data/
+# Data never goes in the repo (the root data/ folder only: a bare "data/" also hid frontend/src/data/)
+/data/
 *.svs
 *.ndpi
 *.tif
