@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:   # the "Run workflow" button on the Actions page
 
 concurrency:
   group: ci-${{ github.ref }}
