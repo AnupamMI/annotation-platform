@@ -432,3 +432,11 @@ table.grid .readout, .crumbs .readout { white-space: nowrap; }
 .msg.plan.failed { border-color: var(--danger, #d9534f); }
 .msg.plan .btn { margin-top: 8px; }
 label.btn.disabled { opacity: .6; pointer-events: none; }
+
+/* demo project (admins, Projects page) */
+.demo-panel { margin-top: 20px; }
+.demo-panel .panel-head p { margin-top: 4px; max-width: 62em; }
+.demo-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.demo-confirm > span { margin-right: auto; }
+.demo-logins { display: grid; gap: 10px; }
+.demo-logins td.num { white-space: nowrap; }

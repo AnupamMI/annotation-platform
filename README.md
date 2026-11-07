@@ -55,7 +55,8 @@ When the API starts it brings the database up to date (Alembic migrations), so t
 
 - API docs: http://localhost:8000/docs
 - MinIO console: http://localhost:9001
-- **Signing in:** `python -m app.seed` prints the demo logins and a password once (set `DEMO_PASSWORD` to choose it, or run `python -m app.seed --reset-passwords`). Without the seed, the first visit asks you to create the admin account. Admins add people and set roles in Setup → Team.
+- **Demo without signing in:** http://localhost:5173/demo/ runs the app on sample data in the browser; nothing is saved.
+- **Signing in:** `python -m app.seed` prints the demo logins and a password once (set `DEMO_PASSWORD` to choose it, or run `python -m app.seed --reset-passwords`). `--reset` rebuilds the demo project fresh; on a deployed site, admins use **Projects → Demo project** instead. Without the seed, the first visit asks you to create the admin account. Admins add people and set roles in Setup → Team.
 
 ### Whole-slide images
 

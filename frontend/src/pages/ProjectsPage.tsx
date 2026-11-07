@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { api, type DemoStatus } from "../api";
 import { useStore } from "../store";
 import { relativeTime, useCan } from "../hooks";
 import { StatusMeter, countStatuses } from "../components/Charts";
@@ -7,7 +8,7 @@ import { Icon } from "../components/Icon";
 import type { LabelClass } from "../types";
 
 export function ProjectsPage() {
-  const { projects, items, events } = useStore();
+  const { projects, items, events, source } = useStore();
   const [creating, setCreating] = useState(false);
   const can = useCan();
 
@@ -55,8 +56,107 @@ export function ProjectsPage() {
         })}
       </div>
 
+      {can.manage && source === "api" && <DemoPanel />}
+
       {creating && <NewProjectDialog onClose={() => setCreating(false)} />}
     </div>
+  );
+}
+
+const ROLE_LABEL: Record<string, string> = { annotator: "Annotator", reviewer: "Reviewer" };
+
+/** Admins: a demo project with shareable (never admin) logins, rebuilt fresh on demand. */
+function DemoPanel() {
+  const { reload, toast } = useStore();
+  const [status, setStatus] = useState<DemoStatus | null>(null);
+  const [fresh, setFresh] = useState<{ password: string; logins: DemoStatus["logins"] } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api.demoStatus().then(setStatus, (err: Error) => setError(err.message));
+  }, []);
+
+  const reset = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const out = await api.demoReset();
+      setStatus(out);
+      setFresh({ password: out.password, logins: out.logins });
+      setConfirming(false);
+      await reload();
+      toast("Demo project is fresh. Share a login below.");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const exists = Boolean(status?.projectId);
+  const reviewerLogin = fresh?.logins.find((l) => l.role === "reviewer");
+  const signInUrl = `${window.location.origin}/app/`;
+  const copy = (text: string) => {
+    navigator.clipboard?.writeText(text).then(() => toast("Copied."), () => toast("Copy failed; select the text instead.", "warn"));
+  };
+
+  return (
+    <section className="panel demo-panel" aria-labelledby="demo-title">
+      <div className="panel-head">
+        <div>
+          <h3 id="demo-title">Demo project</h3>
+          <p className="dim">
+            For a guided demo: share one of the logins below. They are annotator and reviewer accounts, never admin.
+            Resetting deletes everything done in the demo project, builds it fresh and changes the demo password.
+          </p>
+        </div>
+        {!confirming && (
+          <button className="btn" onClick={() => (exists ? setConfirming(true) : reset())} disabled={busy || !status}>
+            {busy ? "Building" : exists ? "Reset demo project" : "Load demo project"}
+          </button>
+        )}
+      </div>
+      {confirming && (
+        <div className="panel-body demo-confirm">
+          <span>Delete everything in the demo project and sign out anyone using a demo login?</span>
+          <button className="btn ghost" onClick={() => setConfirming(false)} disabled={busy}>Cancel</button>
+          <button className="btn danger" onClick={reset} disabled={busy}>{busy ? "Resetting" : "Reset"}</button>
+        </div>
+      )}
+      {error && <p className="panel-body field-error" role="alert">{error}</p>}
+      {fresh && (
+        <div className="panel-body demo-logins">
+          <p className="dim">Sign in at <span className="readout">{signInUrl}</span> with any of these. The password is shown only now.</p>
+          <table className="grid">
+            <tbody>
+              {fresh.logins.map((l) => (
+                <tr key={l.email}>
+                  <td>{l.name}</td>
+                  <td className="dim">{ROLE_LABEL[l.role] ?? l.role}</td>
+                  <td className="readout">{l.email}</td>
+                  <td className="num"><button className="btn sm ghost" onClick={() => copy(l.email)}>Copy</button></td>
+                </tr>
+              ))}
+              <tr>
+                <td>Password (all three)</td>
+                <td />
+                <td className="readout">{fresh.password}</td>
+                <td className="num">
+                  {reviewerLogin && (
+                    <button className="btn sm ghost" onClick={() => copy(`${signInUrl}\n${reviewerLogin.email}\n${fresh.password}`)}>
+                      Copy reviewer login
+                    </button>
+                  )}
+                  <button className="btn sm ghost" onClick={() => copy(fresh.password)}>Copy</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 

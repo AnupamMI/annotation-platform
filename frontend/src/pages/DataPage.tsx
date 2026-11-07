@@ -11,7 +11,7 @@ export function DataPage() {
   const project = useProject();
   const [params, setParams] = useSearchParams();
   const nodeFilter = params.get("node");
-  const { items, nodes, users, annotations, setAssignee, toast, source } = useStore();
+  const { items, nodes, users, annotations, setAssignee, toast, source, sandbox } = useStore();
   const can = useCan();
   const [uploading, setUploading] = useState(params.get("upload") === "1");
   const [status, setStatus] = useState<ItemStatus | "all">("all");
@@ -100,7 +100,7 @@ export function DataPage() {
           </select>
           <span className="dim filter-count"><span className="readout">{shown.length}</span> of {its.length}</span>
           {can.upload && <button className="btn primary" onClick={() => setUploading(true)} disabled={source !== "api"}
-            title={source !== "api" ? "Start the backend to upload real images" : undefined}>
+            title={sandbox ? "Uploading needs an account: the demo runs only in your browser" : source !== "api" ? "Start the backend to upload real images" : undefined}>
             <Icon name="upload" size={15} /> Upload images
           </button>}
         </div>

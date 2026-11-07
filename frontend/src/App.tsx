@@ -11,12 +11,13 @@ import { ReviewPage } from "./pages/ReviewPage";
 import { ImportPage } from "./pages/ImportPage";
 import { SettingsPage } from "./pages/SettingsPage";
 
-export default function App() {
+/** sandbox: the public demo at /demo. Sample data in the browser, never the server, fresh on every visit. */
+export default function App({ sandbox = false }: { sandbox?: boolean }) {
   const { ready, loadError, load, auth } = useStore();
 
   useEffect(() => {
-    load();
-  }, [load]);
+    load(sandbox);
+  }, [load, sandbox]);
 
   if (loadError) {
     return (

@@ -21,6 +21,7 @@ class Storage(Protocol):
     def put(self, key: str, data: bytes, content_type: str) -> None: ...
     def get(self, key: str) -> bytes: ...
     def delete(self, key: str) -> None: ...
+    def delete_prefix(self, prefix: str) -> int: ...
     def put_file(self, key: str, path: str, content_type: str) -> None: ...
     def get_file(self, key: str, path: str) -> None: ...
 
@@ -49,6 +50,17 @@ class LocalStorage:
 
     def delete(self, key: str) -> None:
         self._path(key).unlink(missing_ok=True)
+
+    def delete_prefix(self, prefix: str) -> int:
+        """Deletes every file under a folder-like prefix (e.g. "projects/<id>/"). Returns how many."""
+        import shutil
+
+        p = self._path(prefix.rstrip("/"))
+        if p == self.root or not p.is_dir():
+            return 0
+        n = sum(1 for f in p.rglob("*") if f.is_file())
+        shutil.rmtree(p)
+        return n
 
     def put_file(self, key: str, path: str, content_type: str) -> None:
         import shutil
@@ -109,6 +121,18 @@ class S3Storage:
 
     def delete(self, key: str) -> None:
         self.client.delete_object(Bucket=self.bucket, Key=key)
+
+    def delete_prefix(self, prefix: str) -> int:
+        """Deletes every object under a prefix (e.g. "projects/<id>/"). Returns how many."""
+        if not prefix.strip("/"):
+            raise ValueError("refusing to delete the whole bucket")
+        n = 0
+        for page in self.client.get_paginator("list_objects_v2").paginate(Bucket=self.bucket, Prefix=prefix):
+            keys = [{"Key": o["Key"]} for o in page.get("Contents", [])]
+            if keys:  # at most 1000 per page, the DeleteObjects limit
+                self.client.delete_objects(Bucket=self.bucket, Delete={"Objects": keys, "Quiet": True})
+                n += len(keys)
+        return n
 
     def put_file(self, key: str, path: str, content_type: str) -> None:
         # multipart upload for big files (slides), without loading them into memory

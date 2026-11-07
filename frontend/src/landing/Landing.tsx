@@ -76,9 +76,10 @@ export default function Landing() {
               decision; the platform tracks, imports, checks, queries and packages the work around them.
             </p>
             <div className="l-cta">
-              <a className="btn primary lg" href="/app/">Open the app</a>
+              <a className="btn primary lg" href="/demo/">Try the demo</a>
               <a className="btn lg" href="#how">See how it works</a>
             </div>
+            <p className="l-cta-note faint">No sign-up. The demo runs in your browser on sample images; nothing is saved.</p>
           </div>
           <HeroViewer />
         </section>
@@ -152,8 +153,13 @@ export default function Landing() {
 
         <section className="l-section l-closing">
           <h2>Ready to look around?</h2>
-          <p className="l-body">Sign in with your team account. The first visit to a new installation creates the admin account.</p>
-          <a className="btn primary lg" href="/app/">Open {NAME}</a>
+          <p className="l-body">
+            Try the demo right away: draw, review and import on sample cytology images. Have a team account? Sign in to the full app.
+          </p>
+          <div className="l-cta l-cta-center">
+            <a className="btn primary lg" href="/demo/">Try the demo</a>
+            <a className="btn lg" href="/app/">Sign in</a>
+          </div>
         </section>
       </main>
 

@@ -135,7 +135,14 @@ function Sep() {
 
 /** Shows whether work is saved. In sample mode nothing is saved, and the flag says so. */
 function SaveState() {
-  const { source, pendingWrites } = useStore();
+  const { source, sandbox, pendingWrites } = useStore();
+  if (sandbox) {
+    return (
+      <span className="sample-flag" title="This demo runs in your browser on synthetic sample data. Nothing is sent or saved; reload to start fresh.">
+        Demo: nothing is saved
+      </span>
+    );
+  }
   if (source === "sample") {
     return (
       <span className="sample-flag" title="The backend isn't running, so the app shows synthetic sample data and keeps changes in memory only.">

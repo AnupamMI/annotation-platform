@@ -43,6 +43,7 @@ interface State extends SampleData {
   auth: AuthState;
   authNote: string | null; // e.g. "Your session ended"
   setupTokenRequired: boolean; // creating the first admin needs the server's SETUP_TOKEN
+  sandbox: boolean; // the public demo: sample data by choice, not because the server is down
   ready: boolean;
   loadError: string | null;
   currentUserId: ID;
@@ -51,9 +52,12 @@ interface State extends SampleData {
   toasts: Toast[];
   pendingWrites: number;
 
-  load: () => Promise<void>;
+  /** sandbox: always sample data, even when the server is reachable (the public demo at /demo). */
+  load: (sandbox?: boolean) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   createFirstAdmin: (email: string, displayName: string, password: string, setupToken?: string) => Promise<void>;
+  /** api mode: load everything again (e.g. after the demo project was rebuilt). */
+  reload: () => Promise<void>;
   signOut: () => Promise<void>;
   refreshProject: (projectId: ID) => Promise<void>;
   setCurrentUser: (id: ID) => void;
@@ -140,6 +144,7 @@ export const useStore = create<State>((set, get) => {
     auth: "checking",
     authNote: null,
     setupTokenRequired: false,
+    sandbox: false,
     ready: false,
     loadError: null,
     currentUserId: "u-anupam",
@@ -148,9 +153,10 @@ export const useStore = create<State>((set, get) => {
     toasts: [],
     pendingWrites: 0,
 
-    load: async () => {
+    load: async (sandbox = false) => {
       if (get().ready) return;
-      if (await api.available()) {
+      set({ sandbox });
+      if (!sandbox && (await api.available())) {
         set({ source: "api" });
         setUnauthorizedHandler(() => {
           if (get().auth === "in") set({ ...EMPTY, auth: "signin", authNote: "Your session ended. Please sign in again." });
@@ -184,6 +190,10 @@ export const useStore = create<State>((set, get) => {
     createFirstAdmin: async (email, displayName, password, setupToken) => {
       const me = await api.setup(email, displayName, password, setupToken);
       await loadData(me.id);
+    },
+
+    reload: async () => {
+      if (get().source === "api") await loadData(get().currentUserId);
     },
 
     signOut: async () => {

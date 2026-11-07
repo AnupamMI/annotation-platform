@@ -80,6 +80,8 @@
   font-size: clamp(var(--t-md), 1.6vw, var(--t-lg));
 }
 .l-cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+.l-cta-center { justify-content: center; margin-top: 0; }
+.l-cta-note { margin-top: 12px; font-size: var(--t-sm); }
 
 /* the sample viewer */
 .l-viewer {

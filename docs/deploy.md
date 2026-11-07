@@ -63,15 +63,25 @@ Create the bucket before the first start. The app checks it exists and stops wit
 2. Open `https://<your address>/app/`. Because no admin exists yet, it shows **Create the admin account** and asks for the setup code. Without the code, nobody who stumbles on the address can claim the account first.
 3. Sign in, then add the rest of the team in **Setup → Team**.
 
-For a demo project with the sample images, run the seed once against the hosted database from your own computer:
+## Giving demos
 
-```bash
-cd backend
-DATABASE_URL="postgresql+asyncpg://...?ssl=require" STORAGE_BACKEND=s3 S3_ENDPOINT=... S3_REGION=... \
-  S3_BUCKET=... S3_ACCESS_KEY=... S3_SECRET_KEY=... python -m app.seed
-```
+There are two ways, for two situations:
 
-On Windows PowerShell, set each variable with `$env:NAME = "value"` first.
+| | **Sandbox** (`/demo`) | **Demo project** (signed in) |
+|---|---|---|
+| For | Anyone, any time: put the link anywhere | A guided demo with someone, or a reviewer trying it properly |
+| Sign-in | None | A shared demo login (annotator or reviewer, never admin) |
+| Runs | In the visitor's browser, on sample images; nothing reaches the server | On the server, with every feature: uploads, Ask, guidelines, imports |
+| Fresh | Every visit (reload to start again) | When you press **Reset demo project** |
+
+**Sandbox:** share `https://<your address>/demo/`, or the **Try the demo** button on the landing page. The person menu (bottom left) switches between sample people, so visitors can try the annotator and reviewer views.
+
+**Demo project:**
+1. Sign in as admin. On **Projects**, the **Demo project** panel has **Load demo project**.
+2. It builds the sample project and shows three logins and a password, once. Share the reviewer login, for example.
+3. After the demo, press **Reset demo project**. Everything done in it is deleted and rebuilt fresh, the demo password changes, and anyone still signed in with a demo login is signed out. So old passwords you shared stop working.
+
+Your own admin account and your real projects are never touched by a reset.
 
 ### Settings
 

@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.ai import views as ask_views
-from app.api import ai, activity, annotations, auth, health, items, projects, transfer
+from app.api import ai, activity, annotations, auth, demo, health, items, projects, transfer
 from app.api.deps import current_user
 from app.config import get_settings
 from app.db import engine
@@ -43,5 +43,5 @@ async def security_headers(request: Request, call_next):
 # Public: health check and sign-in. Everything else needs a signed-in user; endpoints add role checks.
 app.include_router(health.router)
 app.include_router(auth.router)
-for r in (projects.router, items.router, annotations.router, activity.router, transfer.router, ai.router):
+for r in (projects.router, items.router, annotations.router, activity.router, transfer.router, ai.router, demo.router):
     app.include_router(r, dependencies=[Depends(current_user)])

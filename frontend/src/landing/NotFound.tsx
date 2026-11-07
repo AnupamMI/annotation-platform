@@ -10,7 +10,7 @@ export default function NotFound() {
       <p className="dim">The page may have moved, or the link has a typo.</p>
       <div className="l-cta">
         <a className="btn primary" href="/">{NAME} home</a>
-        <a className="btn" href="/app/">Open the app</a>
+        <a className="btn" href="/demo/">Try the demo</a>
       </div>
     </div>
   );

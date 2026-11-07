@@ -58,6 +58,12 @@ export interface Bundle {
   imports: ImportBatch[];
 }
 
+/** The demo project (admins only): shareable non-admin logins. */
+export interface DemoStatus {
+  projectId: string | null;
+  logins: { email: string; name: string; role: string }[];
+}
+
 export interface NewProjectInput {
   name: string;
   description?: string;
@@ -97,6 +103,8 @@ export const api = {
     req<User>("POST", "/auth/setup", { email, displayName, password, setupToken }),
   logout: () => req<void>("POST", "/auth/logout"),
   changePassword: (currentPassword: string, newPassword: string) => req<void>("POST", "/auth/password", { currentPassword, newPassword }),
+  demoStatus: () => req<DemoStatus>("GET", "/admin/demo"),
+  demoReset: () => req<DemoStatus & { password: string }>("POST", "/admin/demo/reset"),
   teamList: () => req<TeamMember[]>("GET", "/admin/users"),
   teamAdd: (m: { email: string; displayName: string; role: User["role"]; password: string }) => req<TeamMember>("POST", "/admin/users", m),
   teamUpdate: (id: string, patch: Partial<{ role: User["role"]; isActive: boolean; password: string; displayName: string }>) =>
