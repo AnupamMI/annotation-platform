@@ -49,6 +49,7 @@ export interface Item {
   url: string;
   thumbUrl: string;
   dziUrl?: string | null; // Deep Zoom tiles for large images
+  mpp?: number | null; // microns per pixel from the scanner, when known
   width: number;
   height: number;
   status: ItemStatus;

@@ -20,6 +20,8 @@ class Storage(Protocol):
     def put(self, key: str, data: bytes, content_type: str) -> None: ...
     def get(self, key: str) -> bytes: ...
     def delete(self, key: str) -> None: ...
+    def put_file(self, key: str, path: str, content_type: str) -> None: ...
+    def get_file(self, key: str, path: str) -> None: ...
 
 
 class LocalStorage:
@@ -46,6 +48,21 @@ class LocalStorage:
 
     def delete(self, key: str) -> None:
         self._path(key).unlink(missing_ok=True)
+
+    def put_file(self, key: str, path: str, content_type: str) -> None:
+        import shutil
+
+        p = self._path(key)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, p)
+
+    def get_file(self, key: str, path: str) -> None:
+        import shutil
+
+        p = self._path(key)
+        if not p.exists():
+            raise FileNotFoundError(key)
+        shutil.copyfile(p, path)
 
 
 class S3Storage:
@@ -85,6 +102,18 @@ class S3Storage:
 
     def delete(self, key: str) -> None:
         self.client.delete_object(Bucket=self.bucket, Key=key)
+
+    def put_file(self, key: str, path: str, content_type: str) -> None:
+        # multipart upload for big files (slides), without loading them into memory
+        self.client.upload_file(path, self.bucket, key, ExtraArgs={"ContentType": content_type})
+
+    def get_file(self, key: str, path: str) -> None:
+        from botocore.exceptions import ClientError
+
+        try:
+            self.client.download_file(self.bucket, key, path)
+        except ClientError as exc:
+            raise FileNotFoundError(key) from exc
 
 
 @lru_cache

@@ -17,3 +17,5 @@ httpx>=0.27
 pyyaml>=6.0
 defusedxml>=0.7
 pypdf>=4.2
+openslide-python>=1.4
+openslide-bin>=4.0

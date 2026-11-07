@@ -17,7 +17,7 @@ export function UploadDialog({ project, defaultPath, onClose }: { project: Proje
 
   const add = (files: FileList | null) => {
     if (!files) return;
-    const imgs = [...files].filter((f) => /^image\//.test(f.type) || /\.(tiff?|bmp)$/i.test(f.name));
+    const imgs = [...files].filter((f) => /^image\//.test(f.type) || /\.(tiff?|bmp|svs|ndpi|scn|bif|svslide)$/i.test(f.name));
     setRows((r) => [...r, ...imgs.map((file) => ({ file, state: "waiting" as const, progress: 0 }))]);
     if (imgs.length < files.length) setError(`${files.length - imgs.length} file(s) were not images and were left out.`);
   };
@@ -74,8 +74,8 @@ export function UploadDialog({ project, defaultPath, onClose }: { project: Proje
           >
             <Icon name="upload" size={22} />
             <span>Drop images here or <button className="linkish" onClick={() => inputRef.current?.click()} disabled={running}>choose files</button></span>
-            <span className="faint">JPEG, PNG, WebP, TIFF or BMP. Duplicates are detected and skipped.</span>
-            <input ref={inputRef} type="file" multiple accept="image/*,.tif,.tiff,.bmp" hidden onChange={(e) => add(e.target.files)} />
+            <span className="faint">JPEG, PNG, WebP, TIFF, BMP, or whole slides (.svs, .ndpi, .scn, .bif). Duplicates are detected and skipped.</span>
+            <input ref={inputRef} type="file" multiple accept="image/*,.tif,.tiff,.bmp,.svs,.ndpi,.scn,.bif,.svslide" hidden onChange={(e) => add(e.target.files)} />
           </div>
 
           {rows.length > 0 && (

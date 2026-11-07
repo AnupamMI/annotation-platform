@@ -142,6 +142,7 @@ class ItemOut(ApiModel):
     url: str
     thumb_url: str
     dzi_url: str | None = None  # set when the image is tiled (large images)
+    mpp: float | None = None  # microns per pixel, when the scan says (whole-slide images)
     width: int
     height: int
     status: StatusName

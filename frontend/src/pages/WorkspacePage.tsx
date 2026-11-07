@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { currentAnnotations, historyOf, latestVersion, useStore } from "../store";
 import { formatClock, relativeTime, STATUS_LABEL, useCan, userName } from "../hooks";
-import { Viewer, UM_PER_PX, type Tool, type ViewerHandle } from "../components/Viewer";
+import { Viewer, umPerPx, type Tool, type ViewerHandle } from "../components/Viewer";
 import { Icon } from "../components/Icon";
 import { area, containmentProblems, vertexCount, type Pt } from "../lib/geometry";
 import { useActiveTime } from "../lib/useActiveTime";
@@ -441,7 +441,7 @@ export function WorkspacePage() {
         <span className="readout stat-coord">
           {cursor ? <>x {fmt(cursor[0])}  y {fmt(cursor[1])} px</> : <span className="faint">x –  y –</span>}
         </span>
-        {cursor && <span className="readout dim">{fmt(cursor[0] * UM_PER_PX)}, {fmt(cursor[1] * UM_PER_PX)} µm</span>}
+        {cursor && <span className="readout dim">{fmt(cursor[0] * umPerPx(item))}, {fmt(cursor[1] * umPerPx(item))} µm</span>}
         <span className="readout">{scale >= 1 ? scale.toFixed(1) : scale.toFixed(2)}×</span>
         <span className="dim">{item.width} × {item.height}</span>
         <span className="stat-spacer" />
@@ -486,7 +486,7 @@ function SelectedPanel({
       </div>
       <dl className="facts">
         <dt>Shape</dt><dd>{ann.shape === "bbox" ? "Box" : ann.shape === "polygon" ? "Polygon" : "Point"}</dd>
-        {ann.shape !== "point" && (<><dt>Area</dt><dd className="readout">{Math.round(px).toLocaleString()} px²  <span className="faint">{(px * UM_PER_PX * UM_PER_PX).toFixed(0)} µm²</span></dd></>)}
+        {ann.shape !== "point" && (<><dt>Area</dt><dd className="readout">{Math.round(px).toLocaleString()} px²  <span className="faint">{(px * umPerPx(itemOf(ann.itemId)) ** 2).toFixed(0)} µm²</span></dd></>)}
         <dt>Vertices</dt><dd className="readout">{vertexCount(ann.geometry)}</dd>
         <dt>Source</dt><dd>{ann.source === "import" ? "Imported" : ann.source === "tool_assisted" ? "Assisted" : "Drawn"}</dd>
         <dt>ID</dt><dd className="readout faint">{ann.annotationId.slice(-8)}</dd>
@@ -551,4 +551,8 @@ function SaveNote() {
   const { source, pendingWrites } = useStore();
   if (source === "sample") return <span className="dim">Sample data: changes are not saved</span>;
   return <span className="dim">{pendingWrites ? "Saving" : "All changes saved"}</span>;
+}
+
+function itemOf(id: string) {
+  return useStore.getState().items.find((i) => i.id === id);
 }

@@ -56,6 +56,7 @@ def item_out(i: Item) -> schemas.ItemOut:
         url=f"/api/items/{i.id}/image",
         thumb_url=f"/api/items/{i.id}/thumb",
         dzi_url=f"/api/items/{i.id}/image.dzi" if i.is_tiled else None,
+        mpp=((i.meta or {}).get("slide") or {}).get("mpp_x"),
         width=i.width,
         height=i.height,
         status=i.status.value,

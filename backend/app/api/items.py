@@ -1,7 +1,9 @@
 import json
+import os
 import re
+import tempfile
 import uuid
-from pathlib import PurePath
+from pathlib import Path, PurePath
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from sqlalchemy import select, update
@@ -14,7 +16,7 @@ from app.api.deps import get_project, require
 from app.config import get_settings
 from app.db import get_session
 from app.models import Event, HierarchyLevel, Item, ItemStatus, Node, User
-from app.services import images, tiling
+from app.services import images, slides, tiling
 from app.storage import get_storage
 
 router = APIRouter(tags=["images"])
@@ -74,35 +76,77 @@ async def upload_images(
         raise HTTPException(422, "path must be a JSON list of strings.")
     leaf, new_nodes = await ensure_path(project_id, path_ids, session)
     storage = get_storage()
-    limit = get_settings().max_upload_mb * 1024 * 1024
+    s = get_settings()
     created: list[Item] = []
     skipped: list[dict] = []
     for f in files:
         name = PurePath(f.filename or "image").name
-        data = await f.read()
-        if len(data) > limit:
-            skipped.append({"file": name, "reason": f"larger than {get_settings().max_upload_mb} MB"})
-            continue
+        # stream to disk: whole-slide files can be several GB
+        tmp = await run_in_threadpool(_spool, f, s.max_slide_mb * 1024 * 1024)
         try:
-            info = await run_in_threadpool(images.analyze, data)
-        except ValueError:
-            skipped.append({"file": name, "reason": "not a readable image"})
-            continue
-        dup = (await session.execute(select(Item.original_filename).where(Item.project_id == project_id, Item.sha256 == info["sha256"]))).scalar_one_or_none()
-        if dup:
-            skipped.append({"file": name, "reason": f"same image already uploaded as {dup}"})
-            continue
-        item_id = uuid.uuid4()
-        fields = await run_in_threadpool(images.store, storage, project_id, item_id, info)
-        fields.pop("tile_count", None)
-        item = Item(id=item_id, project_id=project_id, node_id=leaf.id if leaf else None, original_filename=name,
-                    meta={"source_format": info["format"]}, **fields)
-        session.add(item)
-        created.append(item)
+            if tmp is None:
+                skipped.append({"file": name, "reason": f"larger than {s.max_slide_mb} MB"})
+                continue
+            try:
+                slide = await run_in_threadpool(slides.is_slide, name, tmp)
+            except RuntimeError as exc:
+                skipped.append({"file": name, "reason": str(exc)})
+                continue
+            if slide:
+                try:
+                    info = await run_in_threadpool(slides.analyze, tmp)
+                except (ValueError, RuntimeError):
+                    skipped.append({"file": name, "reason": "not a readable slide"})
+                    continue
+            else:
+                if os.path.getsize(tmp) > s.max_upload_mb * 1024 * 1024:
+                    skipped.append({"file": name, "reason": f"larger than {s.max_upload_mb} MB"})
+                    continue
+                try:
+                    info = await run_in_threadpool(images.analyze, Path(tmp).read_bytes())
+                except ValueError:
+                    skipped.append({"file": name, "reason": "not a readable image"})
+                    continue
+            dup = (await session.execute(select(Item.original_filename).where(Item.project_id == project_id, Item.sha256 == info["sha256"]))).scalar_one_or_none()
+            if dup:
+                skipped.append({"file": name, "reason": f"same image already uploaded as {dup}"})
+                continue
+            item_id = uuid.uuid4()
+            if slide:
+                fields = await run_in_threadpool(slides.store, storage, project_id, item_id, tmp, name, info)
+                meta = {"source_format": "slide", "slide": info["slide"]}
+            else:
+                fields = await run_in_threadpool(images.store, storage, project_id, item_id, info)
+                fields.pop("tile_count", None)
+                meta = {"source_format": info["format"]}
+            item = Item(id=item_id, project_id=project_id, node_id=leaf.id if leaf else None, original_filename=name, meta=meta, **fields)
+            session.add(item)
+            created.append(item)
+            if slide:  # overview tiles now, so the slide opens instantly; deeper tiles on demand
+                await run_in_threadpool(slides.warm, storage, item_id, fields["storage_key"], fields["tile_size"], fields["tiles_prefix"])
+        finally:
+            if tmp:
+                Path(tmp).unlink(missing_ok=True)
     if created:
         session.add(Event(project_id=project_id, user_id=user.id, action="items.uploaded", payload={"detail": f"{len(created)} images"}))
     await session.commit()
     return schemas.UploadResult(created=[item_out(i) for i in created], nodes=[node_out(n) for n in new_nodes], skipped=skipped)
+
+
+def _spool(f: UploadFile, limit: int) -> str | None:
+    """Copies an upload to a temporary file in chunks. None if it is over the limit."""
+    out = tempfile.NamedTemporaryFile(delete=False, suffix=PurePath(f.filename or "").suffix.lower(), prefix="upload-")
+    size = 0
+    with out:
+        f.file.seek(0)
+        while block := f.file.read(8 * 1024 * 1024):
+            size += len(block)
+            if size > limit:
+                out.close()
+                Path(out.name).unlink(missing_ok=True)
+                return None
+            out.write(block)
+    return out.name
 
 
 async def _blob(item_id: uuid.UUID, which: str, session: AsyncSession) -> Response:
@@ -145,10 +189,21 @@ async def item_tile(item_id: uuid.UUID, level: int, name: str, session: AsyncSes
     item = await session.get(Item, item_id)
     if not m or not item or not item.is_tiled or not 0 <= level <= 40:
         raise HTTPException(404, "Tile not found.")
+    key = f"{item.tiles_prefix}/{level}/{m[1]}_{m[2]}.{m[3]}"
+    storage = get_storage()
     try:
-        data = await run_in_threadpool(get_storage().get, f"{item.tiles_prefix}/{level}/{m[1]}_{m[2]}.{m[3]}")
+        data = await run_in_threadpool(storage.get, key)
     except FileNotFoundError:
-        raise HTTPException(404, "Tile not found.")
+        if (item.meta or {}).get("source_format") != "slide" or m[3] != "jpeg":
+            raise HTTPException(404, "Tile not found.")
+        # whole-slide image: make the tile from the slide the first time, keep it for next time
+        try:
+            data = await run_in_threadpool(slides.tile, storage, item.id, item.storage_key, item.tile_size, level, int(m[1]), int(m[2]))
+        except KeyError:
+            raise HTTPException(404, "Tile not found.")
+        except FileNotFoundError:
+            raise HTTPException(404, "The slide file is missing from storage.")
+        await run_in_threadpool(storage.put, key, data, "image/jpeg")
     return Response(data, media_type=f"image/{m[3]}", headers={"Cache-Control": "private, max-age=31536000, immutable"})
 
 

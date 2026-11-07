@@ -19,7 +19,9 @@ class Settings(BaseSettings):
     s3_secret_key: str = "annot_dev_password"
     s3_bucket: str = "annot-data"
 
-    max_upload_mb: int = 200
+    max_upload_mb: int = 200  # ordinary images
+    max_slide_mb: int = 10240  # whole-slide files (.svs, .ndpi, ...), streamed to disk
+    slide_cache_dir: str = ""  # where slides are kept for tiling; default: the system temp folder
     max_import_mb: int = 2048
     # Images wider or taller than this are cut into a Deep Zoom tile pyramid
     tile_threshold_px: int = 4096

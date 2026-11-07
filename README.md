@@ -53,6 +53,17 @@ Open http://localhost:5173. The top bar shows **Saved** when the UI is talking t
 - MinIO console: http://localhost:9001
 - **Signing in:** `python -m app.seed` prints the demo logins and a password once (set `DEMO_PASSWORD` to choose it, or run `python -m app.seed --reset-passwords`). Without the seed, the first visit asks you to create the admin account. Admins add people and set roles in Setup → Team.
 
+### Whole-slide images
+
+Upload `.svs` (Aperio), `.ndpi` (Hamamatsu), `.scn` (Leica), `.bif` (Ventana) or pyramidal TIFF slides from **Data → Upload images**, like any other image. They are read with OpenSlide (installed by `requirements.txt`):
+
+- the slide file is stored as-is and never loaded into memory whole (up to `MAX_SLIDE_MB`, 10 GB by default);
+- overview tiles are made during upload, deeper tiles the first time someone zooms there, then kept;
+- the scale bar, cursor position and areas use the slide's own microns per pixel;
+- the label and macro photos inside the slide file are never extracted or shown, because the label can carry patient details. Use pseudonymous IDs for the patient and slide.
+
+To try it, OpenSlide's public test slides work well, for example `CMU-1-JP2K-33005.svs` from https://openslide.cs.cmu.edu/download/openslide-testdata/Aperio/. Slide files are ignored by git (`*.svs` is in `.gitignore`).
+
 ### Ask and agents
 
 Ask works without any AI service: common questions (progress, time per annotator, labels, reviews, rule warnings) use fixed read-only queries, guideline questions use full-text search over the documents in Setup → Guidelines, and agents plan from your wording. To let it answer any question, set `LLM_PROVIDER`, `LLM_MODEL` and `LLM_API_KEY` in `.env` (Claude, any OpenAI-compatible API, or a local model through Ollama).

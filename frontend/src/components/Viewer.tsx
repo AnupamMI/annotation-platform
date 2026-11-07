@@ -50,7 +50,9 @@ type Drag =
   | { type: "box"; start: Pt }
   | { type: "brush"; points: Pt[]; mode: "add" | "remove" };
 
-export const UM_PER_PX = 0.25; // assumed 40x objective; real value comes from scan metadata later
+export const UM_PER_PX = 0.25; // assumed 40x objective when the file has no scale
+/** Microns per pixel: from the slide file when it has one, otherwise the 40x assumption. */
+export const umPerPx = (item?: { mpp?: number | null }) => item?.mpp ?? UM_PER_PX;
 const SCALE_STEPS = [2, 5, 10, 20, 50, 100, 200, 500, 1000];
 const DRAW_TOOLS: Tool[] = ["box", "polygon", "point"];
 
@@ -374,7 +376,7 @@ export const Viewer = forwardRef<ViewerHandle, Props>(function Viewer(props, ref
           <circle cx={cursor[0]} cy={cursor[1]} r={Math.max(2, brushRadius * s)} className={`brush-cursor ${brushMode}`} />
         )}
       </svg>
-      <ScaleBar s={s} />
+      <ScaleBar s={s} um={umPerPx(item)} />
       {tool === "polygon" && draftPoly.length > 0 && (
         <div className="viewer-hint">
           {draftPoly.length} points. Click the first point, double-click or press <kbd>Enter</kbd> to close. <kbd>Esc</kbd> cancels.
@@ -443,9 +445,9 @@ function Reticle({ at, color }: { at: Pt; color?: string }) {
   );
 }
 
-function ScaleBar({ s }: { s: number }) {
+function ScaleBar({ s, um: umPx }: { s: number; um: number }) {
   // pick the largest step that is under ~140 screen px
-  const umPerScreenPx = UM_PER_PX / s;
+  const umPerScreenPx = umPx / s;
   let um = SCALE_STEPS[0];
   for (const step of SCALE_STEPS) if (step / umPerScreenPx <= 140) um = step;
   const px = um / umPerScreenPx;
