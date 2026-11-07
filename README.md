@@ -4,7 +4,10 @@
 
 A general-purpose image annotation platform where **people make every labeling decision** and AI handles the data management around it: tracking, importing, querying and building datasets.
 
-> Status: private, in development. Working end to end: public landing page, sign-in with roles, projects, uploads (large images are tiled, whole-slide images supported), versioned annotations, review, assignments, activity, import and export in four formats, guideline search, Ask and two agents. Ready to deploy: see [docs/deploy.md](docs/deploy.md).
+**Live:** https://annotation-exe.onrender.com · **Try it without signing up:** https://annotation-exe.onrender.com/demo/
+(free hosting: the first visit after a quiet spell takes about a minute to wake up)
+
+> Status: private, in development. Working end to end: public landing page and demo, sign-in with roles, projects, uploads (large images are tiled, whole-slide images supported), versioned annotations, review, assignments, activity, import and export in four formats, guideline search, Ask and two agents. Deployed with Docker on free hosting: see [docs/deploy.md](docs/deploy.md).
 
 ## What makes it different
 
@@ -19,12 +22,14 @@ A general-purpose image annotation platform where **people make every labeling d
 
 | Layer | Tech |
 |---|---|
-| Frontend | React + TypeScript, OpenSeadragon, PixiJS (WebGL annotation layer), React Three Fiber (3D overview, later) |
-| Backend | FastAPI, SQLAlchemy 2 (async), GeoAlchemy2 |
-| Database | PostgreSQL 16 + PostGIS (geometry) + pgvector (RAG) |
-| Queue / cache | Redis |
-| Object storage | MinIO (S3-compatible) |
-| AI | Pluggable LLM adapter: API model first, local (Ollama/vLLM) later |
+| Frontend | React + TypeScript (Vite), OpenSeadragon (deep zoom) with an SVG annotation layer, Zustand |
+| Backend | FastAPI, SQLAlchemy 2 (async), GeoAlchemy2, Alembic (migrations), OpenSlide (whole-slide images) |
+| Database | PostgreSQL 16 + PostGIS (geometry) + pgvector |
+| Object storage | Any S3-compatible store: MinIO locally, Backblaze B2 or Cloudflare R2 when deployed |
+| AI | Pluggable LLM adapter (Claude, OpenAI-compatible, Ollama), optional |
+| Hosting | One Docker image (landing page + app + API); Render, Neon and B2 on free tiers |
+
+Redis is in `docker compose` for the background workers planned next; nothing uses it yet.
 
 ## Run it
 
@@ -120,7 +125,14 @@ GitHub Actions runs the full suite on every push (with the slide test), checks t
 
 ## Deploy
 
-[docs/deploy.md](docs/deploy.md) walks through a free setup: Render for the app (one Docker container), Neon for the database and Cloudflare R2 or Backblaze B2 for files, with Vercel as an option for the web pages.
+[docs/deploy.md](docs/deploy.md) walks through a free setup: Render for the app (one Docker container), Neon for the database and Cloudflare R2 or Backblaze B2 for files, with Vercel as an option for the web pages. On a public install, set `SETUP_TOKEN` so only you can create the first admin account.
+
+## Giving demos
+
+- **Anyone, any time:** share `/demo/` (the **Try the demo** button on the landing page). It runs in the visitor's browser on sample images, needs no account, saves nothing and starts fresh on every visit.
+- **A full, guided demo:** as admin, **Projects → Demo project → Load demo project** builds the sample project and shows shareable logins (annotators and a reviewer, never admin). **Reset demo project** wipes and rebuilds it, changes the demo password and signs demo users out.
+
+Details in [docs/deploy.md](docs/deploy.md#giving-demos).
 
 ## Project layout
 
@@ -128,7 +140,7 @@ GitHub Actions runs the full suite on every push (with the slide test), checks t
 annotation-platform/
 ├── backend/            FastAPI app
 │   ├── app/models/     database tables
-│   ├── app/api/        HTTP endpoints
+│   ├── app/api/        HTTP endpoints (demo.py: the admin demo-project reset)
 │   ├── app/formats/    YOLO, COCO, CVAT XML, Label Studio readers and writers
 │   ├── app/services/   import matching, export, image tiling, whole-slide images
 │   ├── app/ai/         Ask (safe SQL, views), guideline search, agents, LLM adapter
@@ -139,7 +151,7 @@ annotation-platform/
 │   └── tests/          API tests (real Postgres), including format round trips and Ask safety
 ├── frontend/           React app
 │   ├── src/landing/    public landing page (/) and 404
-│   ├── src/pages/      one file per app screen (/app/...)
+│   ├── src/pages/      one file per app screen (/app/..., and /demo/... on sample data)
 │   ├── src/components/ viewer, shell, upload, Ask panel, charts
 │   ├── src/brand.ts    the product name, in one place
 │   ├── src/api.ts      API client
@@ -161,6 +173,6 @@ annotation-platform/
 | 3 | 6–7 | Import/export with round-trip tests, tasks, review |
 | 4 | 8 | Analytics and dashboards |
 | 5 | 9–10 | Ask panel and first agents |
-| 6 | 11–12 | Polish, demo, deployment (landing page, deploy image, CI and migrations done) |
+| 6 | 11–12 | Polish, demo, deployment (done: landing page, public demo, deploy image on Render, CI, migrations) |
 
 See [docs/architecture.md](docs/architecture.md) for the full design.
