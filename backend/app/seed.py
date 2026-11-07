@@ -27,12 +27,12 @@ from sqlalchemy import select
 from app.ai import guidelines
 from app.auth import hash_password
 from app.services import images
-from app.db import SessionLocal, engine
+from app.db import SessionLocal
 from app.geo import to_db
+from app.migrate import upgrade_to_head
 from app.models import (
     Annotation,
     AnnotationSource,
-    Base,
     Event,
     HierarchyLevel,
     ImportBatch,
@@ -66,8 +66,7 @@ STATUS = {1: "done", 2: "done", 3: "done", 4: "in_review", 5: "in_review", 6: "i
 async def main() -> None:
     if not (SAMPLES / "samples.json").exists():
         raise SystemExit(f"Sample images not found in {SAMPLES}. Run: cd frontend && python scripts/make_samples.py")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    await asyncio.to_thread(upgrade_to_head)
 
     password = os.environ.get("DEMO_PASSWORD") or secrets.token_urlsafe(9)
     async with SessionLocal() as s:

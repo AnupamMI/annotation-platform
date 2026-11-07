@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from datetime import datetime, timezone
 from typing import Literal
@@ -28,6 +29,7 @@ class LoginIn(schemas.ApiModel):
 class SetupIn(schemas.ApiModel):
     email: str = Field(min_length=3, max_length=320)
     display_name: str = Field(min_length=1, max_length=200)
+    setup_token: str | None = Field(default=None, max_length=200)
     password: str = Field(max_length=200)
 
 
@@ -94,8 +96,8 @@ async def _setup_needed(session: AsyncSession) -> bool:
 
 @router.get("/auth/status")
 async def status(session: AsyncSession = Depends(get_session)):
-    """Public: whether the first admin account still has to be created."""
-    return {"setupNeeded": await _setup_needed(session)}
+    """Public: whether the first admin account still has to be created, and whether that needs the setup code."""
+    return {"setupNeeded": await _setup_needed(session), "setupTokenRequired": bool(get_settings().setup_token)}
 
 
 @router.post("/auth/setup", response_model=schemas.UserOut)
@@ -103,6 +105,9 @@ async def first_admin(body: SetupIn, request: Request, response: Response, sessi
     """Create the first admin. Only works while no admin can sign in."""
     if not await _setup_needed(session):
         raise HTTPException(409, "Setup is already done. Sign in instead.")
+    expected = get_settings().setup_token
+    if expected and not secrets.compare_digest((body.setup_token or "").encode(), expected.encode()):
+        raise HTTPException(403, "The setup code is wrong. It's the SETUP_TOKEN set on the server.")
     _check_password(body.password)
     email = _norm_email(body.email)
     user = (await session.execute(select(User).where(func.lower(User.email) == email))).scalar_one_or_none()

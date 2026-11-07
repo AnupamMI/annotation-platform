@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     s3_access_key: str = "annot"
     s3_secret_key: str = "annot_dev_password"
     s3_bucket: str = "annot-data"
+    s3_region: str = "us-east-1"  # Cloudflare R2: "auto"; Backblaze B2: the bucket's region, e.g. "us-west-004"
 
     max_upload_mb: int = 200  # ordinary images
     max_slide_mb: int = 10240  # whole-slide files (.svs, .ndpi, ...), streamed to disk
@@ -40,9 +41,19 @@ class Settings(BaseSettings):
 
     # Login
     cookie_secure: bool = False  # set true when served over HTTPS
+    # If set, creating the first admin account needs this code, so a stranger who finds a
+    # fresh public install can't claim it first. Set it on any public deployment.
+    setup_token: str = ""
 
-    # Dev convenience: create tables on startup. Replaced by Alembic migrations later.
-    create_tables_on_startup: bool = True
+    # Sites allowed to call the API from a browser (comma-separated). Not needed when the
+    # UI and API share one address (the Docker image, or Vercel's /api proxy).
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    # Bring the database up to date (Alembic) when the API starts.
+    migrate_on_startup: bool = True
+
+    # Production image only: the built frontend to serve next to the API (see app/serve.py).
+    static_dir: str = ""
 
 
 @lru_cache

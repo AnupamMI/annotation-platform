@@ -1,37 +1,45 @@
+import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import schema_patches
 from app.ai import views as ask_views
 from app.api import ai, activity, annotations, auth, health, items, projects, transfer
 from app.api.deps import current_user
 from app.config import get_settings
 from app.db import engine
-from app.models import Base
+from app.migrate import upgrade_to_head
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Dev convenience only. Alembic migrations replace this before any real data exists.
-    if get_settings().create_tables_on_startup:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        await schema_patches.apply(engine)
+    if get_settings().migrate_on_startup:
+        await asyncio.to_thread(upgrade_to_head)
         await ask_views.ensure(engine)
     yield
     await engine.dispose()
 
 
-app = FastAPI(title="Annotation Platform API", version="0.4.0", lifespan=lifespan)
+app = FastAPI(title="Annotation ExE API", version="0.5.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[o.strip() for o in get_settings().cors_origins.split(",") if o.strip()],
     allow_methods=["*"],
     allow_credentials=True,
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    return response
+
+
 # Public: health check and sign-in. Everything else needs a signed-in user; endpoints add role checks.
 app.include_router(health.router)
 app.include_router(auth.router)

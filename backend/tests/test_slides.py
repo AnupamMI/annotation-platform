@@ -10,6 +10,7 @@ import time
 
 import pytest
 
+from app.config import get_settings
 from app.services import slides
 from tests.conftest import png_bytes
 
@@ -43,13 +44,20 @@ async def test_slide_upload_tiles_and_scale(client):
     assert item["dziUrl"] and item["width"] > 10000 and item["mpp"] and 0.1 < item["mpp"] < 2
     dzi = (await client.get(f"/items/{item['id']}/image.dzi")).text
     assert f'Width="{item["width"]}"' in dzi
-    # deepest level, a tile in the middle: made from the slide on first request
+    # deepest level, a tile over tissue (found from the thumbnail): made from the slide on first request
+    import io
     import math
+
+    from PIL import Image, ImageStat
+
     top = math.ceil(math.log2(max(item["width"], item["height"])))
+    col, row = tissue_tile(SLIDE, get_settings().tile_size)
     t0 = time.monotonic()
-    first = await client.get(f"/items/{item['id']}/image_files/{top}/40_30.jpeg")
+    first = await client.get(f"/items/{item['id']}/image_files/{top}/{col}_{row}.jpeg")
     assert first.status_code == 200 and first.headers["content-type"] == "image/jpeg"
-    again = await client.get(f"/items/{item['id']}/image_files/{top}/40_30.jpeg")
+    stats = ImageStat.Stat(Image.open(io.BytesIO(first.content)).convert("L"))
+    assert stats.stddev[0] > 8 and stats.mean[0] < 235, "tile over tissue came back blank"
+    again = await client.get(f"/items/{item['id']}/image_files/{top}/{col}_{row}.jpeg")
     assert again.content == first.content
     assert (await client.get(f"/items/{item['id']}/image_files/{top}/9999_0.jpeg")).status_code == 404
     assert (await client.get(f"/items/{item['id']}/thumb")).status_code == 200
@@ -61,6 +69,19 @@ async def test_slide_upload_tiles_and_scale(client):
         "annotationId": "6a1f0c62-0000-4000-8000-000000000001", "version": 1, "itemId": item["id"], "labelId": labels[0]["id"],
         "shape": "polygon", "geometry": {"kind": "region", "polygons": [[[[x, y], [x + 200, y], [x + 200, y + 200], [x, y + 200], [x, y]]]]}})
     assert r.status_code == 201, r.text
+
+
+def tissue_tile(path: str, tile_size: int) -> tuple[int, int]:
+    """Full-resolution tile column and row at the darkest (most tissue) part of the slide's thumbnail."""
+    import openslide
+    from PIL import ImageFilter
+
+    with openslide.OpenSlide(path) as s:
+        w, h = s.dimensions
+        thumb = s.get_thumbnail((256, 256)).convert("L").filter(ImageFilter.BoxBlur(3))  # blur: dense tissue, not a speck
+    px = thumb.load()
+    x, y = min(((x, y) for y in range(thumb.height) for x in range(thumb.width)), key=lambda p: px[p])
+    return int(x * w / thumb.width) // tile_size, int(y * h / thumb.height) // tile_size
 
 
 async def test_ordinary_png_still_works(client):

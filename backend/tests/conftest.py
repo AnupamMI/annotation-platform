@@ -20,7 +20,7 @@ TEST_DB = os.environ.get(
 os.environ["DATABASE_URL"] = TEST_DB
 os.environ["STORAGE_BACKEND"] = "local"
 os.environ["LOCAL_STORAGE_DIR"] = tempfile.mkdtemp(prefix="annot-test-")
-os.environ["CREATE_TABLES_ON_STARTUP"] = "false"
+os.environ["MIGRATE_ON_STARTUP"] = "false"  # tests build the schema from the models below; CI checks migrations separately
 
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 from PIL import Image  # noqa: E402

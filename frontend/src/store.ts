@@ -42,6 +42,7 @@ interface State extends SampleData {
   source: DataSource;
   auth: AuthState;
   authNote: string | null; // e.g. "Your session ended"
+  setupTokenRequired: boolean; // creating the first admin needs the server's SETUP_TOKEN
   ready: boolean;
   loadError: string | null;
   currentUserId: ID;
@@ -52,7 +53,7 @@ interface State extends SampleData {
 
   load: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  createFirstAdmin: (email: string, displayName: string, password: string) => Promise<void>;
+  createFirstAdmin: (email: string, displayName: string, password: string, setupToken?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProject: (projectId: ID) => Promise<void>;
   setCurrentUser: (id: ID) => void;
@@ -80,9 +81,6 @@ interface State extends SampleData {
   uploadImages: (projectId: ID, file: File, path: string[], onProgress?: (f: number) => void) => Promise<UploadResult>;
 }
 
-const saved = (key: string) => {
-  try { return localStorage.getItem(key); } catch { return null; }
-};
 const save = (key: string, value: string) => {
   try { localStorage.setItem(key, value); } catch { /* storage unavailable */ }
 };
@@ -141,10 +139,11 @@ export const useStore = create<State>((set, get) => {
     source: "sample",
     auth: "checking",
     authNote: null,
+    setupTokenRequired: false,
     ready: false,
     loadError: null,
     currentUserId: "u-anupam",
-    theme: saved("ap-theme") === "light" ? "light" : "dark",
+    theme: document.documentElement.dataset.theme === "light" ? "light" : "dark", // set in index.html: saved, else the system's
     askOpen: false,
     toasts: [],
     pendingWrites: 0,
@@ -157,8 +156,8 @@ export const useStore = create<State>((set, get) => {
           if (get().auth === "in") set({ ...EMPTY, auth: "signin", authNote: "Your session ended. Please sign in again." });
         });
         try {
-          const { setupNeeded } = await api.authStatus();
-          if (setupNeeded) { set({ auth: "setup", ready: true }); return; }
+          const { setupNeeded, setupTokenRequired } = await api.authStatus();
+          if (setupNeeded) { set({ auth: "setup", setupTokenRequired, ready: true }); return; }
           let me;
           try { me = await api.me(); } catch { set({ auth: "signin", ready: true }); return; }
           await loadData(me.id);
@@ -182,8 +181,8 @@ export const useStore = create<State>((set, get) => {
       await loadData(me.id);
     },
 
-    createFirstAdmin: async (email, displayName, password) => {
-      const me = await api.setup(email, displayName, password);
+    createFirstAdmin: async (email, displayName, password, setupToken) => {
+      const me = await api.setup(email, displayName, password, setupToken);
       await loadData(me.id);
     },
 

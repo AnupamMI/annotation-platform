@@ -1,12 +1,3 @@
-.boot {
-  height: 100%;
-  display: grid;
-  place-content: center;
-  gap: 8px;
-  text-align: center;
-  padding: 24px;
-}
-
 .shell {
   display: grid;
   grid-template-columns: var(--rail-w) 1fr;

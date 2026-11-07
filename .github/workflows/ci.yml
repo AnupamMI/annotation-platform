@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    env:
+      PG: postgresql+asyncpg://annot:annot_dev_password@localhost:5432
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start PostgreSQL with PostGIS and pgvector
+        run: |
+          docker build -t annot-db infra/postgres
+          docker run -d --name db -p 5432:5432 \
+            -e POSTGRES_USER=annot -e POSTGRES_PASSWORD=annot_dev_password -e POSTGRES_DB=annot \
+            -v "$PWD/infra/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro" annot-db
+          for i in $(seq 1 60); do docker exec db pg_isready -U annot -d annot && break; sleep 1; done
+          sleep 3  # the init script restarts the server once
+          for db in annot_test annot_migrate annot_legacy; do docker exec db createdb -U annot $db; done
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Test slide (OpenSlide's public CMU-1, cached)
+        id: slide
+        uses: actions/cache@v4
+        with:
+          path: ~/slides
+          key: slide-cmu1-jp2k-v1
+      - if: steps.slide.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/slides
+          curl -fsSL -o ~/slides/CMU-1-JP2K-33005.svs \
+            https://openslide.cs.cmu.edu/download/openslide-testdata/Aperio/CMU-1-JP2K-33005.svs
+
+      - name: Tests
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: ${{ env.PG }}/annot_test
+        run: TEST_SLIDE=~/slides/CMU-1-JP2K-33005.svs pytest -q -rs
+
+      - name: Migrations on an empty database, run twice, then compare with the models
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.PG }}/annot_migrate
+        run: |
+          alembic upgrade head
+          alembic upgrade head
+          alembic check
+
+      - name: Migrations on a database made before migrations existed
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.PG }}/annot_legacy
+        run: |
+          python -c "
+          import asyncio
+          from app.db import engine
+          from app.models import Base
+          async def main():
+              async with engine.begin() as c:
+                  await c.run_sync(Base.metadata.create_all)
+          asyncio.run(main())
+          "
+          alembic upgrade head
+          alembic check
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the deploy image
+        run: docker build -t annotation-exe .
+      - name: It starts and serves the landing page (no database needed for that)
+        run: |
+          docker run -d --name app -p 8000:8000 -e MIGRATE_ON_STARTUP=false -e STORAGE_BACKEND=local annotation-exe
+          for i in $(seq 1 30); do curl -fs http://localhost:8000/ >/dev/null && break; sleep 1; done
+          curl -fs http://localhost:8000/ | grep -q "<title>Annotation ExE</title>"
+          curl -fs http://localhost:8000/app/p/x | grep -q 'id="root"'
+          curl -fs http://localhost:8000/api/openapi.json | grep -q "Annotation ExE API"
+          docker logs app

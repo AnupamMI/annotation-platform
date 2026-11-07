@@ -90,10 +90,11 @@ export const api = {
   users: () => req<User[]>("GET", "/users"),
 
   // ---------- sign-in ----------
-  authStatus: () => req<{ setupNeeded: boolean }>("GET", "/auth/status"),
+  authStatus: () => req<{ setupNeeded: boolean; setupTokenRequired: boolean }>("GET", "/auth/status"),
   me: () => req<User>("GET", "/auth/me"),
   login: (email: string, password: string) => req<User>("POST", "/auth/login", { email, password }),
-  setup: (email: string, displayName: string, password: string) => req<User>("POST", "/auth/setup", { email, displayName, password }),
+  setup: (email: string, displayName: string, password: string, setupToken?: string) =>
+    req<User>("POST", "/auth/setup", { email, displayName, password, setupToken }),
   logout: () => req<void>("POST", "/auth/logout"),
   changePassword: (currentPassword: string, newPassword: string) => req<void>("POST", "/auth/password", { currentPassword, newPassword }),
   teamList: () => req<TeamMember[]>("GET", "/admin/users"),

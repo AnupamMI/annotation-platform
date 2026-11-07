@@ -21,9 +21,25 @@ async def test_password_hashing():
 
 async def test_everything_needs_a_session(anonymous):
     assert (await anonymous.get("/health")).status_code == 200
-    assert (await anonymous.get("/auth/status")).json() == {"setupNeeded": False}
+    assert (await anonymous.get("/auth/status")).json() == {"setupNeeded": False, "setupTokenRequired": False}
     for path in ("/projects", "/users", f"/items/{uuid.uuid4()}/image", "/auth/me"):
         assert (await anonymous.get(path)).status_code == 401, path
+
+
+async def test_setup_code_guards_first_admin(anonymous, monkeypatch):
+    """On a public install with SETUP_TOKEN set, nobody can claim the first admin account without the code."""
+    from app.api import auth as auth_api
+    from app.config import get_settings
+
+    async def needed(_session):
+        return True
+
+    monkeypatch.setattr(auth_api, "_setup_needed", needed)
+    monkeypatch.setattr(get_settings(), "setup_token", "s3cret-code")
+    assert (await anonymous.get("/auth/status")).json() == {"setupNeeded": True, "setupTokenRequired": True}
+    body = {"email": "intruder@test", "displayName": "Intruder", "password": "long-enough-1"}
+    assert (await anonymous.post("/auth/setup", json=body)).status_code == 403
+    assert (await anonymous.post("/auth/setup", json={**body, "setupToken": "wrong"})).status_code == 403
 
 
 async def test_login_logout_and_cookie_flags(anonymous):

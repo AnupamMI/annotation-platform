@@ -1,8 +1,10 @@
-# Annotation Platform (working name)
+# Annotation ExE
+
+[![CI](https://github.com/AnupamMI/annotation-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/AnupamMI/annotation-platform/actions/workflows/ci.yml)
 
 A general-purpose image annotation platform where **people make every labeling decision** and AI handles the data management around it: tracking, importing, querying and building datasets.
 
-> Status: private, in development. Working end to end: sign-in with roles, projects, uploads (large images are tiled), versioned annotations, review, assignments, activity, import and export in four formats, guideline search, Ask and two agents.
+> Status: private, in development. Working end to end: public landing page, sign-in with roles, projects, uploads (large images are tiled, whole-slide images supported), versioned annotations, review, assignments, activity, import and export in four formats, guideline search, Ask and two agents. Ready to deploy: see [docs/deploy.md](docs/deploy.md).
 
 ## What makes it different
 
@@ -47,7 +49,9 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. The top bar shows **Saved** when the UI is talking to the API. If the API isn't running, the UI falls back to synthetic sample data and says **Sample data, not saved**.
+Open http://localhost:5173 for the landing page; the app itself is at http://localhost:5173/app/. The top bar shows **Saved** when the UI is talking to the API. If the API isn't running, the UI falls back to synthetic sample data and says **Sample data, not saved**.
+
+When the API starts it brings the database up to date (Alembic migrations), so there is no separate step.
 
 - API docs: http://localhost:8000/docs
 - MinIO console: http://localhost:9001
@@ -79,15 +83,27 @@ Agents (dataset builder, consistency checker) always show a plan first. Nothing 
 
 If your database account is not a superuser, give it permission to manage roles once (`ALTER ROLE annot CREATEROLE;`) so the API can create the `ask_readonly` role at startup.
 
-### Updating from an earlier version
+### The whole app in Docker
 
-New columns and tables are added automatically when the API starts. If something still looks wrong after an update (there are no migrations yet), reset the local database (this deletes local data):
+To run it the way it runs in production (one container serving the landing page, the app and the API):
 
 ```bash
-docker compose down -v
-docker compose up -d --build
-cd backend && python -m app.seed
+docker compose --profile full up -d --build
 ```
+
+Then open http://localhost:8080.
+
+### Database changes (migrations)
+
+The schema is managed with Alembic (`backend/migrations/`). The API runs `alembic upgrade head` when it starts, and databases made before migrations existed are brought in line automatically. After changing a model:
+
+```bash
+cd backend
+alembic revision --autogenerate -m "what changed"   # then read the new file in migrations/versions/
+alembic upgrade head
+```
+
+CI fails if the models and the migrations disagree (`alembic check`).
 
 ### Tests
 
@@ -96,8 +112,14 @@ The API tests run against a real PostgreSQL with PostGIS, using a separate `anno
 ```bash
 docker compose exec db createdb -U annot annot_test
 cd backend
-pytest
+TEST_SLIDE=/path/to/CMU-1-JP2K-33005.svs pytest   # TEST_SLIDE is optional; without it the slide test is skipped
 ```
+
+GitHub Actions runs the full suite on every push (with the slide test), checks the migrations, builds the frontend and builds and starts the deploy image.
+
+## Deploy
+
+[docs/deploy.md](docs/deploy.md) walks through a free setup: Render for the app (one Docker container), Neon for the database and Cloudflare R2 or Backblaze B2 for files, with Vercel as an option for the web pages.
 
 ## Project layout
 
@@ -107,18 +129,26 @@ annotation-platform/
 │   ├── app/models/     database tables
 │   ├── app/api/        HTTP endpoints
 │   ├── app/formats/    YOLO, COCO, CVAT XML, Label Studio readers and writers
-│   ├── app/services/   import matching, export, image tiling
+│   ├── app/services/   import matching, export, image tiling, whole-slide images
 │   ├── app/ai/         Ask (safe SQL, views), guideline search, agents, LLM adapter
+│   ├── app/main.py     the API (development: uvicorn app.main:app)
+│   ├── app/serve.py    production: the API under /api plus the built frontend
 │   ├── app/seed.py     demo project from the sample images
+│   ├── migrations/     Alembic database migrations
 │   └── tests/          API tests (real Postgres), including format round trips and Ask safety
 ├── frontend/           React app
-│   ├── src/pages/      one file per screen
+│   ├── src/landing/    public landing page (/) and 404
+│   ├── src/pages/      one file per app screen (/app/...)
 │   ├── src/components/ viewer, shell, upload, Ask panel, charts
+│   ├── src/brand.ts    the product name, in one place
 │   ├── src/api.ts      API client
 │   └── src/store.ts    state: loads from the API, or sample data if it's not running
 ├── infra/postgres/     Postgres image with PostGIS + pgvector
-├── docs/               architecture and decisions
-└── docker-compose.yml  local services
+├── docs/               architecture, decisions, deployment
+├── .github/workflows/  CI
+├── Dockerfile          the deploy image
+├── render.yaml         Render blueprint (free hosting)
+└── docker-compose.yml  local services (+ the whole app with --profile full)
 ```
 
 ## Roadmap
@@ -130,6 +160,6 @@ annotation-platform/
 | 3 | 6–7 | Import/export with round-trip tests, tasks, review |
 | 4 | 8 | Analytics and dashboards |
 | 5 | 9–10 | Ask panel and first agents |
-| 6 | 11–12 | Polish, demo, deployment |
+| 6 | 11–12 | Polish, demo, deployment (landing page, deploy image, CI and migrations done) |
 
 See [docs/architecture.md](docs/architecture.md) for the full design.

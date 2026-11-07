@@ -1,7 +1,8 @@
 """
 Object storage for image bytes, thumbnails and exports.
 
-- "s3": MinIO (the default, started by docker compose) or any S3-compatible store.
+- "s3": MinIO (the default, started by docker compose) or any S3-compatible store
+  (Cloudflare R2, Backblaze B2, AWS S3).
 - "local": a folder on disk, handy when running without Docker.
 
 The database only stores keys; bytes never go into Postgres.
@@ -66,7 +67,7 @@ class LocalStorage:
 
 
 class S3Storage:
-    def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket: str):
+    def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket: str, region: str = "us-east-1"):
         import boto3
         from botocore.config import Config
 
@@ -76,7 +77,7 @@ class S3Storage:
             endpoint_url=endpoint,
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
-            region_name="us-east-1",
+            region_name=region,
             config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
         )
         self._ensure_bucket()
@@ -87,7 +88,13 @@ class S3Storage:
         try:
             self.client.head_bucket(Bucket=self.bucket)
         except ClientError:
-            self.client.create_bucket(Bucket=self.bucket)
+            try:
+                self.client.create_bucket(Bucket=self.bucket)
+            except ClientError as exc:  # hosted storage keys usually can't create buckets
+                raise RuntimeError(
+                    f"Storage bucket '{self.bucket}' is missing or these keys can't reach it. "
+                    "Create the bucket in your storage provider and check S3_ENDPOINT, S3_REGION and the keys."
+                ) from exc
 
     def put(self, key: str, data: bytes, content_type: str) -> None:
         self.client.put_object(Bucket=self.bucket, Key=key, Body=data, ContentType=content_type)
@@ -121,4 +128,4 @@ def get_storage() -> Storage:
     s = get_settings()
     if s.storage_backend == "local":
         return LocalStorage(s.local_storage_dir)
-    return S3Storage(s.s3_endpoint, s.s3_access_key, s.s3_secret_key, s.s3_bucket)
+    return S3Storage(s.s3_endpoint, s.s3_access_key, s.s3_secret_key, s.s3_bucket, s.s3_region)

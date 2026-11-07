@@ -1,0 +1,35 @@
+# Render blueprint: one free web service running the Docker image (landing page + app + API).
+# The database (Neon) and file storage (Cloudflare R2 or Backblaze B2) are separate; see docs/deploy.md.
+# Values marked sync: false are asked for when you create the blueprint and never stored in git.
+
+services:
+  - type: web
+    name: annotation-exe
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false   # postgresql+asyncpg://USER:PASSWORD@HOST/DB?ssl=require (Neon's direct, non-pooled host)
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: S3_ENDPOINT
+        sync: false   # R2: https://<account id>.r2.cloudflarestorage.com  B2: https://s3.<region>.backblazeb2.com
+      - key: S3_REGION
+        sync: false   # R2: auto  B2: e.g. us-west-004
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: SETUP_TOKEN
+        generateValue: true   # the code asked for when creating the first admin; copy it from the Environment tab
+      - key: MAX_SLIDE_MB
+        value: "2048"   # free instances have little disk and memory
+      - key: LLM_PROVIDER
+        value: none     # set anthropic / openai / ollama plus LLM_MODEL and LLM_API_KEY to let Ask answer anything

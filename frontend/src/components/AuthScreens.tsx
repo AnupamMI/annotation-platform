@@ -1,24 +1,15 @@
 import { useState, type FormEvent } from "react";
 import { api } from "../api";
 import { useStore } from "../store";
-
-/** The reticle-over-slide mark, larger, for the sign-in screens. */
-function Mark() {
-  return (
-    <svg width="44" height="44" viewBox="0 0 26 26" aria-hidden>
-      <rect x="2" y="7" width="22" height="12" rx="1.5" fill="none" stroke="var(--line-strong)" strokeWidth="1.2" />
-      <circle cx="13" cy="13" r="5.2" fill="none" stroke="var(--green)" strokeWidth="1.4" />
-      <path d="M13 4.5v4M13 17.5v4M4.5 13h4M17.5 13h4" stroke="var(--green)" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
-}
+import { NAME } from "../brand";
+import { Mark } from "./Mark";
 
 function Frame({ title, intro, children }: { title: string; intro: string; children: React.ReactNode }) {
   return (
     <div className="auth-stage">
       <div className="auth-card panel">
         <div className="auth-head">
-          <Mark />
+          <a href="/" aria-label={`${NAME} home`}><Mark size={44} /></a>
           <div>
             <h1>{title}</h1>
             <p className="dim">{intro}</p>
@@ -51,7 +42,7 @@ export function SignInScreen() {
   };
 
   return (
-    <Frame title="Sign in" intro="Annotation Platform">
+    <Frame title="Sign in" intro={NAME}>
       {authNote && <p className="auth-note">{authNote}</p>}
       <form className="form-stack" onSubmit={submit} noValidate>
         <label className="field">
@@ -73,7 +64,8 @@ export function SignInScreen() {
 }
 
 export function SetupScreen() {
-  const { createFirstAdmin } = useStore();
+  const { createFirstAdmin, setupTokenRequired } = useStore();
+  const [token, setToken] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -83,13 +75,14 @@ export function SetupScreen() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (setupTokenRequired && !token.trim()) { setError("Enter the setup code."); return; }
     if (!name.trim() || !email.trim()) { setError("Enter your name and email."); return; }
     if (password.length < 8) { setError("Use a password of at least 8 characters."); return; }
     if (password !== again) { setError("The two passwords don't match."); return; }
     setBusy(true);
     setError("");
     try {
-      await createFirstAdmin(email.trim(), name.trim(), password);
+      await createFirstAdmin(email.trim(), name.trim(), password, setupTokenRequired ? token.trim() : undefined);
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
@@ -99,8 +92,14 @@ export function SetupScreen() {
   return (
     <Frame title="Create the admin account" intro="First start: nobody can sign in yet. This account can add the rest of the team.">
       <form className="form-stack" onSubmit={submit} noValidate>
+        {setupTokenRequired && (
+          <label className="field"><span>Setup code</span>
+            <input className="input" autoComplete="off" autoFocus value={token} onChange={(e) => { setToken(e.target.value); setError(""); }} />
+            <em className="faint field-hint">The SETUP_TOKEN set on the server. It stops anyone else claiming this account first.</em>
+          </label>
+        )}
         <label className="field"><span>Your name</span>
-          <input className="input" autoComplete="name" autoFocus value={name} onChange={(e) => { setName(e.target.value); setError(""); }} />
+          <input className="input" autoComplete="name" autoFocus={!setupTokenRequired} value={name} onChange={(e) => { setName(e.target.value); setError(""); }} />
         </label>
         <label className="field"><span>Email</span>
           <input className="input" type="email" autoComplete="username" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} />

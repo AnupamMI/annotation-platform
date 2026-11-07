@@ -43,6 +43,16 @@ a { color: inherit; }
   letter-spacing: 0;
 }
 
+/* full-screen loading / error message */
+.boot {
+  height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 24px;
+}
+
 .dim { color: var(--ink-dim); }
 .faint { color: var(--ink-faint); }
 

@@ -73,9 +73,15 @@ Test: export → import → identical annotations (round-trip) for every support
 First agents: dataset builder, consistency checker. Later: import assistant, work allocation, report drafts, lineage records.
 
 ## 6. Out of scope for v1
-3D lab overview, full WSI formats (.svs/.ndpi), video, text/audio annotation, multi-organization tenancy, local LLM.
+3D lab overview, video, text/audio annotation, multi-organization tenancy, local LLM.
+(Whole-slide images (.svs, .ndpi, .scn, .bif) were moved into v1: read with OpenSlide, tiles made on demand, label photo never shown.)
 
-## 7. Open items
-- Project name.
+## 7. Deployment
+- One image (`Dockerfile`) serves the landing page, the app and the API on one address (`app/serve.py`), so the sign-in cookie is never cross-site.
+- Schema changes are Alembic migrations, applied when the API starts. The baseline (0001) is frozen SQL from the v0.4 models; databases made before migrations get the old startup patches instead.
+- Free hosting: Render (container), Neon (Postgres with PostGIS and pgvector), Cloudflare R2 or Backblaze B2 (files). See [deploy.md](deploy.md).
+
+## 8. Open items
+- ~~Project name~~: Annotation ExE.
 - Licence decision (currently private; revisit with supervisor).
 - Which public datasets for the two demo projects (one cytology, one non-medical).

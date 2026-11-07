@@ -6,6 +6,7 @@ import { Icon } from "./Icon";
 import { AskPanel } from "./AskPanel";
 import { Toasts } from "./Toasts";
 import { ChangePasswordDialog } from "./AuthScreens";
+import { Mark } from "./Mark";
 
 const PROJECT_NAV = [
   { to: "", label: "Overview", icon: "overview", end: true },
@@ -14,17 +15,6 @@ const PROJECT_NAV = [
   { to: "/import", label: "Import", icon: "import" },
   { to: "/settings", label: "Setup", icon: "settings" },
 ];
-
-/** The instrument mark: a reticle over a slide. */
-function Mark() {
-  return (
-    <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden>
-      <rect x="2" y="7" width="22" height="12" rx="1.5" fill="none" stroke="var(--line-strong)" strokeWidth="1.4" />
-      <circle cx="13" cy="13" r="5.2" fill="none" stroke="var(--green)" strokeWidth="1.6" />
-      <path d="M13 4.5v4M13 17.5v4M4.5 13h4M17.5 13h4" stroke="var(--green)" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 export function Shell() {
   const { projectId } = useParams();

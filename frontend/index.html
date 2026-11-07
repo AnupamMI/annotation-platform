@@ -3,7 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Annotation Platform</title>
+    <title>Annotation ExE</title>
+    <meta name="description" content="Image annotation where people make every labeling decision and AI handles the data around it: tracking, imports, questions in plain language and dataset building." />
+    <meta name="theme-color" content="#14181e" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Annotation ExE" />
+    <meta property="og:description" content="People label. AI handles the data. Image annotation for microscopy, whole-slide images and beyond." />
+    <meta property="og:image" content="/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -11,10 +19,11 @@
       rel="stylesheet"
     />
     <script>
-      // Apply the saved theme before first paint to avoid a flash.
+      // Apply the saved theme (or the system's, the first time) before first paint to avoid a flash.
       try {
-        const t = localStorage.getItem("ap-theme");
-        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+        let t = localStorage.getItem("ap-theme");
+        if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = t;
       } catch {}
     </script>
   </head>
