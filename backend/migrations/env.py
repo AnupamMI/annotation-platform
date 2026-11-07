@@ -4,7 +4,7 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
-from geoalchemy2 import alembic_helpers
+from geoalchemy2 import Geometry, alembic_helpers
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.config import get_settings
@@ -25,6 +25,18 @@ def include_object(obj, name, type_, reflected, compare_to):
     return alembic_helpers.include_object(obj, name, type_, reflected, compare_to)
 
 
+def compare_type(context, inspected_column, metadata_column, inspected_type, metadata_type):
+    """Geometry columns: compare only the shape type and SRID. Read back from PostGIS, SRID 0
+    ("no reference system", what the models use) comes back as GeoAlchemy2's default -1, and the
+    spatial_index flag isn't part of the column type at all. Other types: Alembic's own comparison."""
+    if isinstance(metadata_type, Geometry) and isinstance(inspected_type, Geometry):
+        kind = lambda t: (t.geometry_type or "GEOMETRY").upper()  # noqa: E731
+        unknown = {0, -1, None}
+        same_srid = inspected_type.srid == metadata_type.srid or {inspected_type.srid, metadata_type.srid} <= unknown
+        return not (kind(inspected_type) == kind(metadata_type) and same_srid)
+    return None
+
+
 def configure(connection=None, **kw):
     context.configure(
         connection=connection,
@@ -34,7 +46,7 @@ def configure(connection=None, **kw):
         include_object=include_object,
         process_revision_directives=alembic_helpers.writer,
         render_item=alembic_helpers.render_item,
-        compare_type=True,
+        compare_type=compare_type,
         **kw,
     )
 
