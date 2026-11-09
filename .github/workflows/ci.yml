@@ -69,12 +69,18 @@ jobs:
         env:
           DATABASE_URL: ${{ env.PG }}/annot_legacy
         run: |
+          # as old local databases were made: init.sql (extensions, restricted schema), then tables at startup
           python -c "
           import asyncio
+          from sqlalchemy import text
           from app.db import engine
           from app.models import Base
           async def main():
               async with engine.begin() as c:
+                  for ext in ('postgis', 'vector', 'pgcrypto'):
+                      await c.execute(text(f'CREATE EXTENSION IF NOT EXISTS {ext}'))
+                  for schema in {t.schema for t in Base.metadata.tables.values() if t.schema}:
+                      await c.execute(text(f'CREATE SCHEMA IF NOT EXISTS {schema}'))
                   await c.run_sync(Base.metadata.create_all)
           asyncio.run(main())
           "
